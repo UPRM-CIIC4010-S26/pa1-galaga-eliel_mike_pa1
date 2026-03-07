@@ -17,8 +17,8 @@ Program::Program() {
         });
 
     for (int i = 0; i < 30; i++) {
-        float x = 250 + 50 * i;
-        float y = 200 + 50 * i;
+        float x = 250 + 50 *(i % 10); // edite eso
+        float y = 200 + 50 * (i / 10); // edite eso
 
         Enemy::enemies.push_back(std::pair<std::pair<float, float>, Enemy*> {
             std::pair<float, float>{x, y}, 
@@ -26,7 +26,6 @@ Program::Program() {
         });
     }
 }
-
 void Program::Update() {
     for (Animation& a : Animation::animations) a.update();
     for (int i = 0; i < Animation::animations.size(); i++) {
@@ -40,24 +39,50 @@ void Program::Update() {
         ManageEnemyRespawns();
         player->update();
 
-        for (std::pair<std::pair<float, float>, Enemy*> p : Enemy::enemies) {
+        // Colisión jugador-enemigo: solo quita vidas
+        for (auto &p : Enemy::enemies) {
             if (p.second && HitBox::Collision(player->hitBox, p.second->hitBox)) {
                 Animation::animations.push_back(
-                    Animation(player->position.first, player->position.second, 16, 0, 33, 34, 30 ,30, 3, ImageManager::SpriteSheet)
+                    Animation(player->position.first, player->position.second, 16, 0, 33, 34, 30, 30, 3, ImageManager::SpriteSheet)
                 );
 
                 PlaySound(SoundManager::gameOver);
                 Projectile::projectiles.clear();
                 player->position.first = GetScreenWidth() / 2 - 15;
-                p.second->health = 0;
                 pauseFrames = 120;
                 lives--;
             }
         }
 
+        // Actualizar proyectiles
         for (Projectile& p : Projectile::projectiles) { 
             p.update(); 
 
+            if (p.ID != 0) { 
+                // proyectiles enemigos
+                if (HitBox::Collision(player->hitBox, p.getHitBox())) {
+                    PlayerReset();
+                }
+            } else { 
+                // proyectiles del jugador
+                for (auto &e : Enemy::enemies) {
+                    if (e.second && HitBox::Collision(p.getHitBox(), e.second->hitBox)) {
+                        p.del = true;          // eliminar proyectil
+                        e.second->health--;     // reducir salud del enemigo
+
+                        // Si muere por tu disparo, sumar puntos
+                        if (e.second->health <= 0) {
+                            score += e.second->scoreValue;
+                            while (score >= nextLifeScore && lives < 5) {
+                                lives++;
+                                nextLifeScore += 1000;
+                            }
+                            delete e.second;
+                            e.second = nullptr;
+                        }
+                    }
+                }
+            }
         }
 
         if (lives <= 0 && pauseFrames <= 0) gameOver = true;
@@ -65,6 +90,7 @@ void Program::Update() {
         Projectile::ProjectileCollision();
     }
 }
+
 
 void Program::Draw() {
     background.Draw();
@@ -76,6 +102,7 @@ void Program::Draw() {
                    Rectangle{10.0f + i * 30, GetScreenHeight() - 30.0f, 20, 20}, 
                    Vector2{0, 0}, 0, WHITE);
     }
+    DrawText(("Score: " + std::to_string(score)).c_str(), 10, 10, 24, WHITE); // hice eso
 
 
     for (Projectile p : Projectile::projectiles) p.draw();
@@ -88,13 +115,12 @@ void Program::Draw() {
 
 void Program::ManageEnemyRespawns() {
     delay = std::max(delay - 1, 0);
-
-    respawnCooldown -= 1;
+    int scoreFactor = score / 1000; // hice eso
+     respawnCooldown -= 1 + scoreFactor;
     if (respawnCooldown <= 0) {
-        respawnCooldown = 1080;
         for (std::pair<std::pair<float, float>, Enemy*>& p : Enemy::enemies) {
             if (!p.second && p.first.second != 150) {
-                int eType = GetRandomValue(1, 3);
+                    int eType = GetRandomValue(1, 3);
 
                 if (eType == 1) {
                     p.second = new StEnemy(GetScreenWidth() / 2 - 15, 0, true);
@@ -102,17 +128,17 @@ void Program::ManageEnemyRespawns() {
                 } else {
                     p.second = new StdEnemy(GetScreenWidth() / 2 - 15, 0, true);
                 }
-
+            
                 respawns++;
                 break;
-            } else if (!p.second && p.first.second == 150) {
+        } else if (!p.second && p.first.second == 150) {
                 p.second = new SpEnemy(GetScreenWidth() / 2 - 15, 0, true);
                 respawns++;
                 break;
             }
         }
-    }
-
+        respawnCooldown = 1080;
+    
     if(respawns >= 4) {
         count = 4;
         respawns = 0;
@@ -127,7 +153,7 @@ void Program::ManageEnemyRespawns() {
         count--;
         delay = 20;
     }
-}
+} }
 
 void Program::DrawStartup() {
     DrawRectangle(0, 0, (float)GetScreenWidth(), (float)GetScreenHeight(), Color{0, 0, 0, 125});
@@ -152,12 +178,18 @@ void Program::KeyInputs() {
     if (!paused && !startup && IsKeyPressed('O')) gameOver = !gameOver;
     if (!gameOver && !paused && IsKeyPressed('I')) startup = !startup;
     if (IsKeyPressed('H')) HitBox::drawHitbox = !HitBox::drawHitbox;
+    if (!gameOver && !paused && IsKeyPressed('K')) {
+    score += 500;
+    if (score >= nextLifeScore && lives < 5) {
+        lives++;
+        nextLifeScore += 1000; 
     
+    }
     if (gameOver && IsKeyPressed(KEY_ENTER)) {
         gameOver = false;
         Reset();
     }
-
+}
     if (startup && IsKeyPressed(KEY_ENTER)) {
         startup = false;
     }
@@ -187,4 +219,26 @@ void Program::Reset() {
     count = 0;
     delay = 0;
     lives = 3;
+    score = 0;
+    nextLifeScore = 1000;
+    Enemy::enemies.push_back(std::pair<std::pair<float, float>, Enemy*> {
+            std::pair<float, float>{350, 150}, 
+            new SpEnemy(350, 150)
+        });
+
+    Enemy::enemies.push_back(std::pair<std::pair<float, float>, Enemy*> {
+            std::pair<float, float>{600, 150}, 
+            new SpEnemy(600, 150)
+        });
+
+    for (int i = 0; i < 30; i++) {
+        float x = 250 + 50 *(i % 10); // edite eso
+        float y = 200 + 50 * (i / 10); // edite eso
+
+        Enemy::enemies.push_back(std::pair<std::pair<float, float>, Enemy*> {
+            std::pair<float, float>{x, y}, 
+            new StdEnemy(x, y)
+        });
+    } // fase 1 doneeeeee !!!
+
 }
