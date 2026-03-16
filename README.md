@@ -12,7 +12,7 @@ Don't forget that you must also fill out an evaluation form in Moodle to conside
 ## Grading
 
 (841-23-5497) (Eliel Javier Santiago Valle) (eliel.santiago@upr.edu)
-(STUDENT NUMBER HERE) (STUDENT NAME HERE) (STUDENT EMAIL HERE)
+(802-23-9783) (Michael D. Quinones Luciano) (michael.quinones13@upr.edu)
 
 Any project that doesn't compile will receive a 0.
 
