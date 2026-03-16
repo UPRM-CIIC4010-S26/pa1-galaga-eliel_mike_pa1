@@ -3,7 +3,7 @@
 
 void DyEnemy::draw() {
     if (HitBox::drawHitbox) this->hitBox.draw();
-    DrawTexturePro(ImageManager::SpriteSheet, Rectangle{2, 128, 13, 14}, 
+       DrawTexturePro(ImageManager::SpriteSheet, spriteRectangle, 
                 Rectangle{this->position.first + 15, this->position.second + 15, 30, 30}, 
                 Vector2{15, 15}, this->aimAngle, WHITE);
 }
@@ -31,7 +31,7 @@ void DyEnemy::update(std::pair<float, float> pos, HitBox target) {
     this->hitBox.box.y = this->position.second;
 
     if (this->cooldown <= 0) {
-        Projectile::projectiles.push_back(Projectile(Projectile(position.first + 15, position.second, 1)));
+        Projectile::projectiles.push_back(Projectile(position.first + 15, position.second, 1));
         PlaySound(SoundManager::shoot);
         this->cooldown = GetRandomValue(90, 300);
     }

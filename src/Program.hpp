@@ -24,6 +24,7 @@ class Program {
         bool startup = true;
         bool paused = false;
         bool gameOver = false;
+        int GameMode= 0; //0 es normal, 1 es hardcore -Mike
 
     public:
         Program();

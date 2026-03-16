@@ -1,4 +1,5 @@
 #include "Program.hpp"
+#include "SoundManager.hpp"
 
 Program::Program() {
     Background::sideWalls = std::pair<HitBox, HitBox>{ 
@@ -71,7 +72,12 @@ void Program::Update() {
                         e.second->health--;     // reducir salud del enemigo
 
                         // Si muere por tu disparo, sumar puntos
-                        if (e.second->health <= 0) {
+                        if (e.second->health > 0) {
+                        //Cambie tu codigo aqui para que e.second->health sea mayor a cero e inclui el sonido de hit y dead -Mike
+                            PlaySound(SoundManager::hit);
+                        } else {
+                            PlaySound(SoundManager::dead);
+
                             score += e.second->scoreValue;
                             while (score >= nextLifeScore && lives < 5) {
                                 lives++;
@@ -158,8 +164,12 @@ void Program::ManageEnemyRespawns() {
 void Program::DrawStartup() {
     DrawRectangle(0, 0, (float)GetScreenWidth(), (float)GetScreenHeight(), Color{0, 0, 0, 125});
     DrawText("Galaga", (GetScreenWidth() / 2 - 237), 75, 144, WHITE);
-    DrawText("Press Enter", (GetScreenWidth() / 2) - 75, GetScreenHeight() / 2, 24, GRAY);
+    std::string ModeText = (GameMode == 1) ? "Hardcore Mode (1 Life)" : "Normal Mode (3 Lives)";
+    DrawText(ModeText.c_str(), (GetScreenWidth() / 2) - 100, GetScreenHeight() / 2 - 50, 24, WHITE);
+    DrawText("Press M to toggle mode", (GetScreenWidth() / 2) - 100, GetScreenHeight() / 2 - 20, 20, GRAY);
+    DrawText("Press Enter to start", (GetScreenWidth() / 2) - 75, GetScreenHeight() / 2 + 10, 24, GRAY);
 }
+// inclui ui para que se vea el modo de juego en el main menu  + como cambiar de modo
 
 void Program::DrawPauseScreen() {
     DrawRectangle(0, 0, (float)GetScreenWidth(), (float)GetScreenHeight(), Color{0, 0, 0, 125});
@@ -174,29 +184,41 @@ void Program::DrawGameOver() {
 }
 
 void Program::KeyInputs() {
-    if ((!gameOver && !startup && IsKeyPressed('P')) || (paused && IsKeyPressed(KEY_ENTER))) paused = !paused;
-    if (!paused && !startup && IsKeyPressed('O')) gameOver = !gameOver;
-    if (!gameOver && !paused && IsKeyPressed('I')) startup = !startup;
-    if (IsKeyPressed('H')) HitBox::drawHitbox = !HitBox::drawHitbox;
+    if ((!gameOver && !startup && IsKeyPressed('P')) || (paused && IsKeyPressed(KEY_ENTER))) 
+        paused = !paused;
+
+    if (!paused && !startup && IsKeyPressed('O')) 
+        gameOver = !gameOver;
+
+    if (!gameOver && !paused && IsKeyPressed('I')) 
+        startup = !startup;
+
+    if (IsKeyPressed('H')) 
+        HitBox::drawHitbox = !HitBox::drawHitbox;
+
+    // para cambiar modo de juego
+    if (startup && IsKeyPressed('M')) 
+        GameMode = 1 - GameMode; // cambia entre 0 y uno para modo normal y hardcore
+
+    // debug score
     if (!gameOver && !paused && IsKeyPressed('K')) {
-    score += 500;
-    if (score >= nextLifeScore && lives < 5) {
-        lives++;
-        nextLifeScore += 1000; 
-    
+        score += 500;
+
+        if (score >= nextLifeScore && lives < 5) {
+            lives++;
+            nextLifeScore += 1000;
+        }
     }
     if (gameOver && IsKeyPressed(KEY_ENTER)) {
         gameOver = false;
         Reset();
     }
-}
     if (startup && IsKeyPressed(KEY_ENTER)) {
         startup = false;
     }
-
-    if (!startup && !paused && !gameOver && pauseFrames <= 0) player->keyInputs();
-   
-}
+    if (!startup && !paused && !gameOver && pauseFrames <= 0) 
+        player->keyInputs();
+    }
 
 void Program::PlayerReset() {
     Animation::animations.push_back(
@@ -211,6 +233,7 @@ void Program::PlayerReset() {
 }
 
 void Program::Reset() {
+    delete player; // borrar jugador anterior porque se quedaba frizado
     Enemy::enemies.clear();
     StdEnemy::attackInProgress = false;
     player = new Player((GetScreenWidth() / 2) - 15, GetScreenHeight() * 0.75f);
@@ -218,7 +241,12 @@ void Program::Reset() {
     respawns = 0;
     count = 0;
     delay = 0;
-    lives = 3;
+    paused = false; //para asegurar que no se quede pausado
+    gameOver = false; // para asegurar que no se quede en game over
+    if (GameMode == 1) 
+            lives = 1; //Si estas en modo hardcore tienes solo una vida -Mike
+        else 
+            lives = 3;
     score = 0;
     nextLifeScore = 1000;
     Enemy::enemies.push_back(std::pair<std::pair<float, float>, Enemy*> {
